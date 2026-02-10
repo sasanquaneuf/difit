@@ -32,6 +32,7 @@ import { useFileWatch } from './hooks/useFileWatch';
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
 import { useViewedFiles } from './hooks/useViewedFiles';
 import { useViewport } from './hooks/useViewport';
+import { apiUrl } from './utils/basePath';
 import { getFileElementId } from './utils/domUtils';
 import { findCommentPosition } from './utils/navigation/positionHelpers';
 
@@ -399,7 +400,7 @@ function App() {
         if (base) params.set('base', base);
         if (target) params.set('target', target);
 
-        const response = await fetch(`/api/diff?${params}`);
+        const response = await fetch(apiUrl(`api/diff?${params}`));
         if (!response.ok) throw new Error('Failed to fetch diff data');
         const data = (await response.json()) as DiffResponse;
         setDiffData(data);
@@ -450,7 +451,7 @@ function App() {
 
   // Fetch revision options on mount
   useEffect(() => {
-    fetch('/api/revisions')
+    fetch(apiUrl('api/revisions'))
       .then((res) => (res.ok ? res.json() : null))
       .then((data: RevisionsResponse | null) => {
         setRevisionOptions(data);
@@ -529,7 +530,7 @@ function App() {
         side: c.position.side,
       }));
       const data = JSON.stringify({ comments: transformedComments });
-      fetch('/api/comments', {
+      fetch(apiUrl('api/comments'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: data,
@@ -555,7 +556,7 @@ function App() {
         }));
         // Use sendBeacon for reliable delivery during page unload
         const data = JSON.stringify({ comments: transformedComments });
-        navigator.sendBeacon('/api/comments', data);
+        navigator.sendBeacon(apiUrl('api/comments'), data);
       }
     };
 
@@ -568,7 +569,7 @@ function App() {
 
   // Establish SSE connection for tab close detection
   useEffect(() => {
-    const eventSource = new EventSource('/api/heartbeat');
+    const eventSource = new EventSource(apiUrl('api/heartbeat'));
 
     eventSource.onopen = () => {
       console.log('Connected to server heartbeat');
@@ -634,7 +635,7 @@ function App() {
   const handleOpenInEditor = useCallback(
     async (filePath: string, lineNumber: number) => {
       try {
-        const response = await fetch('/api/open-in-editor', {
+        const response = await fetch(apiUrl('api/open-in-editor'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filePath, line: lineNumber, editor: settings.editor }),

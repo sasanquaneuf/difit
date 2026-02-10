@@ -56,6 +56,7 @@ interface CliOptions {
   pr?: string;
   clean?: boolean;
   includeUntracked?: boolean;
+  basePath?: string;
 }
 
 const program = new Command();
@@ -86,6 +87,7 @@ program
   .option('--pr <url>', 'GitHub PR URL to review (e.g., https://github.com/owner/repo/pull/123)')
   .option('--clean', 'start with a clean slate by clearing all existing comments')
   .option('--include-untracked', 'automatically include untracked files in diff')
+  .option('--base-path <path>', 'base path for reverse proxy (e.g. /proxy/3000/)')
   .action(async (commitish: string, compareWith: string | undefined, options: CliOptions) => {
     try {
       // Check if we should read from stdin
@@ -107,6 +109,7 @@ program
           openBrowser: options.open,
           mode: options.mode,
           clearComments: options.clean,
+          basePath: options.basePath || process.env.DIFIT_BASE_PATH,
         });
 
         console.log(`\n🚀 difit server started on ${url}`);
@@ -213,6 +216,7 @@ program
         clearComments: options.clean,
         diffMode,
         repoPath,
+        basePath: options.basePath || process.env.DIFIT_BASE_PATH,
       });
 
       console.log(`\n🚀 difit server started on ${url}`);

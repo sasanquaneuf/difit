@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import { readFileSync } from 'fs';
 import { type Server } from 'http';
 import { join, dirname, resolve, sep } from 'path';
 import { fileURLToPath } from 'url';
@@ -31,6 +32,7 @@ interface ServerOptions {
   clearComments?: boolean;
   diffMode?: DiffMode;
   repoPath?: string;
+  basePath?: string;
 }
 
 export async function startServer(
@@ -444,10 +446,27 @@ export async function startServer(
   if (isProduction) {
     // Find client files relative to the CLI executable location
     const distPath = join(__dirname, '..', 'client');
+    const indexHtml = readFileSync(join(distPath, 'index.html'), 'utf-8');
     app.use(express.static(distPath));
 
-    app.get('/{*splat}', (_req, res) => {
-      res.sendFile(join(distPath, 'index.html'));
+    app.get('/{*splat}', (req, res) => {
+      // Determine the base path from explicit option, proxy headers, or Express mount point.
+      // When no explicit base path is configured, skip <base> injection so the browser
+      // uses the document URL as-is — this works correctly with any reverse proxy
+      // (e.g. code-server) that rewrites paths without setting X-Forwarded-Prefix.
+      const forwardedPrefix = req.headers['x-forwarded-prefix'];
+      const basePath =
+        options.basePath ? options.basePath
+        : typeof forwardedPrefix === 'string' ? forwardedPrefix
+        : Array.isArray(forwardedPrefix) ? (forwardedPrefix[0] ?? null)
+        : req.baseUrl || null;
+
+      let html = indexHtml;
+      if (basePath) {
+        const normalized = basePath.endsWith('/') ? basePath : basePath + '/';
+        html = indexHtml.replace('<head>', `<head>\n    <base href="${normalized}" />`);
+      }
+      res.type('html').send(html);
     });
   } else {
     app.get('/', (_req, res) => {
